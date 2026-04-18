@@ -2,9 +2,12 @@
 
 A lightweight Linux container runtime in C with a long-running supervisor and a kernel-space memory monitor.
 
-## Name: Komal Sajja
+## Team Information
 
----
+| Name | SRN |
+|------|-----|
+| Komal Sajja | YOUR_SRN |
+| Teammate Name | TEAMMATE_SRN |
 
 ## 1. Build, Load, and Run Instructions
 
