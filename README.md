@@ -1,111 +1,237 @@
-# Multi-Container Runtime
+# Multi-Container Runtime (OS Project)
 
-A lightweight Linux container runtime in C with a long-running supervisor and a kernel-space memory monitor.
-
-Read [`project-guide.md`](project-guide.md) for the full project specification.
+A lightweight container runtime implemented in C that supports multiple isolated containers using Linux namespaces, along with a supervisor process and a kernel-level memory monitoring module.
 
 ---
 
-## Getting Started
+## 👥 Team Information
 
-### 1. Fork the Repository
+| Name          | SRN          |
+| ------------- | ------------ |
+| Komal S Sajja     | PES1UG24CS231     |
+| Kabir Raju G | PES1UG24CS210 |
 
-1. Go to [github.com/shivangjhalani/OS-Jackfruit](https://github.com/shivangjhalani/OS-Jackfruit)
-2. Click **Fork** (top-right)
-3. Clone your fork:
+---
 
-```bash
-git clone https://github.com/<your-username>/OS-Jackfruit.git
-cd OS-Jackfruit
-```
+## ⚙️ Setup and Execution Guide
 
-### 2. Set Up Your VM
+### 🔧 Requirements
 
-You need an **Ubuntu 22.04 or 24.04** VM with **Secure Boot OFF**. WSL will not work.
-
-Install dependencies:
+* Ubuntu 22.04 / 24.04 (VM recommended)
+* Secure Boot disabled
+* Kernel headers installed
 
 ```bash
 sudo apt update
 sudo apt install -y build-essential linux-headers-$(uname -r)
 ```
 
-### 3. Run the Environment Check
+---
+
+### 📁 Project Setup
 
 ```bash
-cd boilerplate
-chmod +x environment-check.sh
-sudo ./environment-check.sh
+git clone https://github.com/<your-username>/OS-Jackfruit.git
+cd OS-Jackfruit
 ```
 
-Fix any issues reported before moving on.
-
-### 4. Prepare the Root Filesystem
+Download and extract base filesystem:
 
 ```bash
 mkdir rootfs-base
 wget https://dl-cdn.alpinelinux.org/alpine/v3.20/releases/x86_64/alpine-minirootfs-3.20.3-x86_64.tar.gz
 tar -xzf alpine-minirootfs-3.20.3-x86_64.tar.gz -C rootfs-base
 
-# Make one writable copy per container you plan to run
-cp -a ./rootfs-base ./rootfs-alpha
-cp -a ./rootfs-base ./rootfs-beta
+cp -a rootfs-base rootfs-alpha
+cp -a rootfs-base rootfs-beta
 ```
-
-Do not commit `rootfs-base/` or `rootfs-*` directories to your repository.
-
-### 5. Understand the Boilerplate
-
-The `boilerplate/` folder contains starter files:
-
-| File                   | Purpose                                             |
-| ---------------------- | --------------------------------------------------- |
-| `engine.c`             | User-space runtime and supervisor skeleton          |
-| `monitor.c`            | Kernel module skeleton                              |
-| `monitor_ioctl.h`      | Shared ioctl command definitions                    |
-| `Makefile`             | Build targets for both user-space and kernel module |
-| `cpu_hog.c`            | CPU-bound test workload                             |
-| `io_pulse.c`           | I/O-bound test workload                             |
-| `memory_hog.c`         | Memory-consuming test workload                      |
-| `environment-check.sh` | VM environment preflight check                      |
-
-Use these as your starting point. You are free to restructure the repository however you want — the submission requirements are listed in the project guide.
-
-### 6. Build and Verify
-
-```bash
-cd boilerplate
-make
-```
-
-If this compiles without errors, your environment is ready.
-
-### 7. GitHub Actions Smoke Check
-
-Your fork will inherit a minimal GitHub Actions workflow from this repository.
-
-That workflow only performs CI-safe checks:
-
-- `make -C boilerplate ci`
-- user-space binary compilation (`engine`, `memory_hog`, `cpu_hog`, `io_pulse`)
-- `./boilerplate/engine` with no arguments must print usage and exit with a non-zero status
-
-The CI-safe build command is:
-
-```bash
-make -C boilerplate ci
-```
-
-This smoke check does not test kernel-module loading, supervisor runtime behavior, or container execution.
 
 ---
 
-## What to Do Next
+### 🛠️ Build
 
-Read [`project-guide.md`](project-guide.md) end to end. It contains:
+```bash
+cd boilerplate
+make clean
+make
+```
 
-- The six implementation tasks (multi-container runtime, CLI, logging, kernel monitor, scheduling experiments, cleanup)
-- The engineering analysis you must write
-- The exact submission requirements, including what your `README.md` must contain (screenshots, analysis, design decisions)
+Copy workloads:
 
-Your fork's `README.md` should be replaced with your own project documentation as described in the submission package section of the project guide. (As in get rid of all the above content and replace with your README.md)
+```bash
+cp cpu_hog memory_hog io_pulse ../rootfs-alpha/
+cp cpu_hog memory_hog io_pulse ../rootfs-beta/
+```
+
+---
+
+### 🧠 Load Kernel Module
+
+```bash
+sudo insmod monitor.ko
+ls /dev/container_monitor
+```
+
+(Optional verification)
+
+```bash
+dmesg | tail
+```
+
+---
+
+### ▶️ Running the System
+
+#### Terminal 1 — Supervisor
+
+```bash
+sudo ./engine supervisor ../rootfs-base
+```
+
+#### Terminal 2 — Container Commands
+
+Start containers:
+
+```bash
+sudo ./engine start alpha ../rootfs-alpha /bin/sh
+sudo ./engine start beta  ../rootfs-beta  /bin/sh
+```
+
+Check status:
+
+```bash
+sudo ./engine ps
+```
+
+View logs:
+
+```bash
+sudo ./engine logs alpha
+cat logs/alpha.log
+```
+
+Stop containers:
+
+```bash
+sudo ./engine stop alpha
+sudo ./engine stop beta
+```
+
+---
+
+### 🧹 Cleanup
+
+```bash
+sudo rmmod monitor
+```
+
+---
+
+## 📸 Demo Screenshots
+
+### 1. Multiple containers running simultaneously
+
+![Multi](screenshots/1-multi-container.jpeg)
+
+---
+
+### 2. Container metadata using `ps`
+
+![Metadata](screenshots/2-metadata.jpeg)
+
+---
+
+### 3. Log output captured via logging pipeline
+
+![Logging](screenshots/3-logging.jpeg)
+
+---
+
+### 4. CLI interaction with supervisor
+
+![CLI](screenshots/4-cli-ipc.jpeg)
+
+---
+
+### 5. Soft memory limit warning
+
+![Soft](screenshots/5-soft-limit.jpeg)
+
+---
+
+### 6. Hard limit enforcement (process killed)
+
+![Hard](screenshots/6-hard-limit.jpeg)
+
+---
+
+### 7. Scheduling experiment using different priorities
+
+Due to the short-lived nature of the workload, the measured execution time primarily reflects process startup overhead rather than scheduling differences. However, the experiment demonstrates the ability to assign different priorities using nice values.
+
+![Scheduling](screenshots/7-scheduling.jpeg)
+
+---
+
+### 8. Proper cleanup and termination
+
+![Cleanup](screenshots/8-cleanup.jpeg)
+
+---
+
+## 🧠 Engineering Concepts
+
+### 🔹 Container Isolation
+
+Containers are created using Linux namespaces (PID, UTS, mount). Each container sees its own process tree and filesystem using `chroot`. `/proc` is mounted inside the container for process visibility.
+
+---
+
+### 🔹 Supervisor Role
+
+A persistent supervisor process manages container lifecycle. It keeps track of all running containers and ensures proper cleanup using `waitpid()` to avoid zombie processes.
+
+---
+
+### 🔹 IPC and Logging
+
+Two communication paths are used:
+
+* Pipes: capture container output
+* UNIX socket: send CLI commands
+
+A producer-consumer model is implemented using threads and a bounded buffer to handle logs safely.
+
+---
+
+### 🔹 Memory Monitoring
+
+A kernel module tracks memory usage using RSS.
+
+* Soft limit → warning message
+* Hard limit → process termination
+
+Kernel-level enforcement ensures timely and reliable monitoring.
+
+---
+
+### 🔹 Scheduling Behavior
+
+Linux Completely Fair Scheduler (CFS) allocates CPU based on `nice` values. Lower nice values result in higher CPU share.
+
+---
+
+## ⚖️ Design Choices
+
+| Component      | Approach           | Tradeoff                 |
+| -------------- | ------------------ | ------------------------ |
+| Isolation      | Namespace-based    | No network isolation     |
+| Supervisor     | Central controller | Single point of control  |
+| Logging        | Threaded buffer    | Slight overhead          |
+| Memory control | Kernel module      | Requires root privileges |
+
+---
+
+## 🧾 Conclusion
+
+This project demonstrates how core OS concepts such as process isolation, scheduling, IPC, and memory management work together in a practical container runtime system.
