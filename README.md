@@ -6,8 +6,8 @@ A lightweight Linux container runtime in C with a long-running supervisor and a 
 
 | Name | SRN |
 |------|-----|
-| Komal Sajja | YOUR_SRN |
-| Teammate Name | TEAMMATE_SRN |
+| Komal Sajja | PES1UG24CS231 |
+| Kabir Raju G | PES1UG24CS210 |
 
 ## 1. Build, Load, and Run Instructions
 
