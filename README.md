@@ -1,25 +1,18 @@
-# Multi-Container Runtime (OS Project)
+# Multi-Container Runtime
 
-A lightweight container runtime implemented in C that supports multiple isolated containers using Linux namespaces, along with a supervisor process and a kernel-level memory monitoring module.
+A lightweight Linux container runtime in C with a long-running supervisor and a kernel-space memory monitor.
 
----
-
-## 👥 Team Information
-
-| Name          | SRN          |
-| ------------- | ------------ |
-| Komal S Sajja     | PES1UG24CS231     |
-| Kabir Raju G | PES1UG24CS210 |
+## Name: Komal Sajja
 
 ---
 
-## ⚙️ Setup and Execution Guide
+## 1. Build, Load, and Run Instructions
 
-### 🔧 Requirements
+### Prerequisites
 
-* Ubuntu 22.04 / 24.04 (VM recommended)
-* Secure Boot disabled
-* Kernel headers installed
+* Ubuntu 22.04 or 24.04 (VM)
+* Secure Boot OFF
+* Linux kernel headers installed
 
 ```bash
 sudo apt update
@@ -28,19 +21,16 @@ sudo apt install -y build-essential linux-headers-$(uname -r)
 
 ---
 
-### 📁 Project Setup
+### Setup
 
 ```bash
-git clone https://github.com/<your-username>/OS-Jackfruit.git
+git clone https://github.com/Komal-S-Sajja/OS-Jackfruit.git
 cd OS-Jackfruit
-```
 
-Download and extract base filesystem:
-
-```bash
 mkdir rootfs-base
 wget https://dl-cdn.alpinelinux.org/alpine/v3.20/releases/x86_64/alpine-minirootfs-3.20.3-x86_64.tar.gz
-tar -xzf alpine-minirootfs-3.20.3-x86_64.tar.gz -C rootfs-base
+
+sudo tar -xzf alpine-minirootfs-3.20.3-x86_64.tar.gz -C rootfs-base
 
 cp -a rootfs-base rootfs-alpha
 cp -a rootfs-base rootfs-beta
@@ -48,190 +38,100 @@ cp -a rootfs-base rootfs-beta
 
 ---
 
-### 🛠️ Build
+### Build
 
 ```bash
 cd boilerplate
-make clean
-make
-```
+sudo make
 
-Copy workloads:
-
-```bash
 cp cpu_hog memory_hog io_pulse ../rootfs-alpha/
 cp cpu_hog memory_hog io_pulse ../rootfs-beta/
 ```
 
 ---
 
-### 🧠 Load Kernel Module
+### Load Module
 
 ```bash
 sudo insmod monitor.ko
-ls /dev/container_monitor
-```
-
-(Optional verification)
-
-```bash
-dmesg | tail
+ls -l /dev/container_monitor
+sudo dmesg | tail
 ```
 
 ---
 
-### ▶️ Running the System
+### Run
 
-#### Terminal 1 — Supervisor
+#### Terminal 1 (Supervisor)
 
 ```bash
 sudo ./engine supervisor ../rootfs-base
 ```
 
-#### Terminal 2 — Container Commands
-
-Start containers:
+#### Terminal 2 (Containers)
 
 ```bash
-sudo ./engine start alpha ../rootfs-alpha /bin/sh
-sudo ./engine start beta  ../rootfs-beta  /bin/sh
-```
+sudo ./engine start alpha ../rootfs-alpha /bin/sleep 100
+sudo ./engine start beta  ../rootfs-beta  /bin/sleep 100
 
-Check status:
-
-```bash
 sudo ./engine ps
+sudo ./engine logs alpha
 ```
 
-View logs:
+---
+
+### Additional Tests
 
 ```bash
-sudo ./engine logs alpha
-cat logs/alpha.log
+sudo ./engine run test ../rootfs-alpha ./cpu_hog
+sudo ./engine run test ../rootfs-alpha ./memory_hog
 ```
 
-Stop containers:
+---
+
+### Cleanup
 
 ```bash
 sudo ./engine stop alpha
 sudo ./engine stop beta
-```
-
----
-
-### 🧹 Cleanup
-
-```bash
 sudo rmmod monitor
+sudo dmesg | tail
 ```
 
 ---
 
-## 📸 Demo Screenshots
+## 2. Demo Screenshots
 
-### 1. Multiple containers running simultaneously
-
-![Multi](screenshots/1-multi-container.jpeg)
-
----
-
-### 2. Container metadata using `ps`
-
-![Metadata](screenshots/2-metadata.jpeg)
-
----
-
-### 3. Log output captured via logging pipeline
-
-![Logging](screenshots/3-logging.jpeg)
+| # | What                        | Screenshot                               |
+| - | --------------------------- | ---------------------------------------- |
+| 1 | Multi-container supervision | ![1](screenshots/1-multi-container.jpeg) |
+| 2 | Metadata tracking           | ![2](screenshots/2-metadata.jpeg)        |
+| 3 | Logging                     | ![3](screenshots/3-logging.jpeg)         |
+| 4 | CLI and IPC                 | ![4](screenshots/4-cli-ipc.jpeg)         |
+| 5 | Soft-limit warning          | ![5](screenshots/5-soft-limit.jpeg)      |
+| 6 | Hard-limit enforcement      | ![6](screenshots/6-hard-limit.jpeg)      |
+| 7 | Scheduling experiment       | ![7](screenshots/7-scheduling.jpeg)      |
+| 8 | Clean teardown              | ![8](screenshots/8-cleanup.jpeg)         |
 
 ---
 
-### 4. CLI interaction with supervisor
+## 3. Key Observations
 
-![CLI](screenshots/4-cli-ipc.jpeg)
-
----
-
-### 5. Soft memory limit warning
-
-![Soft](screenshots/5-soft-limit.jpeg)
-
----
-
-### 6. Hard limit enforcement (process killed)
-
-![Hard](screenshots/6-hard-limit.jpeg)
+* Containers are created using `clone()` and isolated using PID, UTS, and mount namespaces
+* `chroot()` is used to restrict filesystem access to the container rootfs
+* Logging is implemented using pipes and buffered in user space
+* Kernel module monitors memory usage and enforces limits
+* Soft limits generate warnings, while hard limits terminate the container
+* Scheduling behavior is influenced using `nice` values
+* Observed timing differences are affected by process startup overhead, not pure CPU scheduling
 
 ---
 
-### 7. Scheduling experiment using different priorities
+## 4. Learnings
 
-Due to the short-lived nature of the workload, the measured execution time primarily reflects process startup overhead rather than scheduling differences. However, the experiment demonstrates the ability to assign different priorities using nice values.
-
-![Scheduling](screenshots/7-scheduling.jpeg)
-
----
-
-### 8. Proper cleanup and termination
-
-![Cleanup](screenshots/8-cleanup.jpeg)
-
----
-
-## 🧠 Engineering Concepts
-
-### 🔹 Container Isolation
-
-Containers are created using Linux namespaces (PID, UTS, mount). Each container sees its own process tree and filesystem using `chroot`. `/proc` is mounted inside the container for process visibility.
-
----
-
-### 🔹 Supervisor Role
-
-A persistent supervisor process manages container lifecycle. It keeps track of all running containers and ensures proper cleanup using `waitpid()` to avoid zombie processes.
-
----
-
-### 🔹 IPC and Logging
-
-Two communication paths are used:
-
-* Pipes: capture container output
-* UNIX socket: send CLI commands
-
-A producer-consumer model is implemented using threads and a bounded buffer to handle logs safely.
-
----
-
-### 🔹 Memory Monitoring
-
-A kernel module tracks memory usage using RSS.
-
-* Soft limit → warning message
-* Hard limit → process termination
-
-Kernel-level enforcement ensures timely and reliable monitoring.
-
----
-
-### 🔹 Scheduling Behavior
-
-Linux Completely Fair Scheduler (CFS) allocates CPU based on `nice` values. Lower nice values result in higher CPU share.
-
----
-
-## ⚖️ Design Choices
-
-| Component      | Approach           | Tradeoff                 |
-| -------------- | ------------------ | ------------------------ |
-| Isolation      | Namespace-based    | No network isolation     |
-| Supervisor     | Central controller | Single point of control  |
-| Logging        | Threaded buffer    | Slight overhead          |
-| Memory control | Kernel module      | Requires root privileges |
-
----
-
-## 🧾 Conclusion
-
-This project demonstrates how core OS concepts such as process isolation, scheduling, IPC, and memory management work together in a practical container runtime system.
+* Root filesystem must contain required binaries like `/bin/sh`
+* Executables must be copied into rootfs for container execution
+* Kernel modules require proper headers and permissions
+* Containers are essentially processes with isolation mechanisms
+* Improper process termination can leave orphan processes
+* Killing system processes incorrectly can crash the environment
