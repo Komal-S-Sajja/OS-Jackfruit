@@ -47,8 +47,10 @@ cp -a rootfs-base rootfs-beta
 cd boilerplate
 sudo make
 
-cp cpu_hog memory_hog io_pulse ../rootfs-alpha/
-cp cpu_hog memory_hog io_pulse ../rootfs-beta/
+sudo cp cpu_hog memory_hog io_pulse ../rootfs-alpha/
+sudo cp cpu_hog memory_hog io_pulse ../rootfs-beta/
+sudo chmod +x ../rootfs-alpha/*
+sudo chmod +x ../rootfs-beta/*
 ```
 
 ---
