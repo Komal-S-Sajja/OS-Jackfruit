@@ -80,6 +80,7 @@ sudo ./engine start alpha ../rootfs-alpha /bin/sleep 100
 sudo ./engine start beta  ../rootfs-beta  /bin/sleep 100
 
 sudo ./engine ps
+cat logs/alpha.log
 sudo ./engine logs alpha
 ```
 
